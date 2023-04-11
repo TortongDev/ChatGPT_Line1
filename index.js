@@ -1,5 +1,3 @@
-// const line = require('@line/bot-sdk');
-// const Client = require('@line/bot-sdk').Client;
 const axios = require('axios');
 const line = require('@line/bot-sdk');
 const express = require('express');
@@ -14,51 +12,20 @@ const config = {
     channelSecret: "a51d527a1b6c37f2c64d111a8ffef09f",
     
 };
-
-
-
-
 const openai = new OpenAIApi(configuration);
-const textGeneration = async (prompt) => {
-    try {
-        const response = await openai.createCompletion({
-            model: 'text-davinci-003',
-            prompt: `Human: ${prompt}\nAI:`,
-            temperature: 0.7,
-            max_tokens: 1000,
-            top_p: 1,
-            frequency_penalty: 0,
-            presence_penalty: 0.9,
-            stop: ['Human:', 'AI:']
-        });
-        return {
-            status: 1,
-            response: `${response.data.choices[0].text}`
-        };
-    } catch (error) {
-        return {
-            status: 0,
-            response: ''
-        };
-    }
-};
 const webApp = express();
 const PORT = 8000;
 webApp.use(express.urlencoded({ extended: true }));
 webApp.use(express.json());
 webApp.use((req, res, next) => {
-    console.log(`Path ${req.path} with Method ${req.method}`);
     next();
 });
-
-
 webApp.get('/', (req, res) => {
     res.sendStatus(200);
 });
 
 // webApp.use(bodyParser.json());
 const client = new line.Client(config);
-    
 // Middleware สำหรับ parse JSON
 webApp.use(express.json());
 
@@ -67,30 +34,33 @@ webApp.post('/webhooks', async (req, res) => {
     res.sendStatus(200);
     // ดึง event จาก request body
     const event = req.body.events[0];
-    // console.log(event.replyToken);
     // ถ้า event เป็น message และมี type เป็น text
-    if (event.type === 'message' && event.message.type === 'text') {
+    if (event.type == 'message' && event.message.type == 'text') {
         // ดึงข้อความจาก event
-        const text = event.message.text;
-
+        const texts = event.message.text;
         // ใช้ OpenAI API สร้างข้อความตอบกลับ
-        const response = await openai.createCompletion({
-        model: 'text-davinci-003',
-        prompt: `Input: ${text}\nOutput:`,
-        maxTokens: 500,
-        });
+        const responseS = await openai.createCompletion({
 
+            model: 'text-davinci-003',
+            prompt: `Human: ${texts}\nAI:`,
+            temperature: 0.7,
+            max_tokens: 1000,
+            top_p: 1,
+            frequency_penalty: 0,
+            presence_penalty: 0.9,
+            stop: ['Human:', 'AI:']
+        });        
+        console.log('ข้อความที่ส่ง : '+ texts);
+        console.log('รูปแบบข้อความที่ส่ง : ' + event.message.type);
+        console.log('\nข้อความตอบกลับ : ' + responseS.data.choices[0].text.trim());
         // ส่งข้อความตอบกลับไปยังผู้ใช้
         await client.replyMessage(event.replyToken, {
         type: 'text',
-        text: response.data.choices[0].text.trim(),
+        text: responseS.data.choices[0].text.trim(),
         });
     }
 
-
     });
-// });
-
 webApp.listen(PORT, () => {
     console.log(`Server is up and running at ${PORT}`);
 });
